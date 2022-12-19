@@ -76,19 +76,21 @@ namespace ChampSelectSpy
             {
                 ClientInfo.isRunning = true;
                 ClientInfo.ProcessId = processes[0].Id;
-                toolStripStatusLabel1.Text = "Summoner: " + ClientInfo.SummonerDisplayName + " - Gamestate: " + ClientInfo.GameState;
+                toolStripStatusLabel1.Text =
+                    $"Summoner: {ClientInfo.SummonerDisplayName} - Gamestate: {ClientInfo.GameState}";
                 if (ClientInfo.cmdline == null)
                 {
                     foreach (ManagementObject obj in mngmtClass.GetInstances())
                     {
-                        if (obj["Name"].Equals("LeagueClientUx.exe"))
+                        if (!obj["Name"].Equals("LeagueClientUx.exe"))
                         {
-                            ClientInfo.cmdline = obj["Name"] + " [" + obj["CommandLine"] + "]";
-                            ClientInfo.RiotPort = int.Parse(GetBetween(ClientInfo.cmdline, "--riotclient-app-port=", "\" \"--no-rads"));
-                            ClientInfo.RiotToken = Convert.ToBase64String(Encoding.GetEncoding("ISO-8859-1").GetBytes("riot:" + GetBetween(ClientInfo.cmdline, "--riotclient-auth-token=", "\" \"--riotclient")));
-                            ClientInfo.ClientPort = int.Parse(GetBetween(ClientInfo.cmdline, "--app-port=", "\" \"--install"));
-                            ClientInfo.ClientToken = Convert.ToBase64String(Encoding.GetEncoding("ISO-8859-1").GetBytes("riot:" + GetBetween(ClientInfo.cmdline, "--remoting-auth-token=", "\" \"--respawn-command=LeagueClient.exe")));
+                            continue;    
                         }
+                        ClientInfo.cmdline = obj["Name"] + " [" + obj["CommandLine"] + "]";
+                        ClientInfo.RiotPort = int.Parse(GetBetween(ClientInfo.cmdline, "--riotclient-app-port=", "\" \"--no-rads"));
+                        ClientInfo.RiotToken = Convert.ToBase64String(Encoding.GetEncoding("ISO-8859-1").GetBytes("riot:" + GetBetween(ClientInfo.cmdline, "--riotclient-auth-token=", "\" \"--riotclient")));
+                        ClientInfo.ClientPort = int.Parse(GetBetween(ClientInfo.cmdline, "--app-port=", "\" \"--install"));
+                        ClientInfo.ClientToken = Convert.ToBase64String(Encoding.GetEncoding("ISO-8859-1").GetBytes("riot:" + GetBetween(ClientInfo.cmdline, "--remoting-auth-token=", "\" \"--respawn-command=LeagueClient.exe")));
                     }
                 }
             }
@@ -100,7 +102,7 @@ namespace ChampSelectSpy
 
             if (ClientInfo.isRunning)
             {
-                if (ClientInfo.Region == null || ClientInfo.Region == "")
+                if (String.IsNullOrEmpty(ClientInfo.Region))
                 {
                     ClientInfo.Region = GetBetween(MakeRequest(ClientInfo, "GET", "/lol-rso-auth/v1/authorization", client: true), "currentPlatformId\":\"", "\",\"subject").ToLower();
                 }
@@ -140,7 +142,8 @@ namespace ChampSelectSpy
                     }
 
 
-                }else if(ClientInfo.GameState == "InProgress")
+                }
+                else if(ClientInfo.GameState == "InProgress")
                 {
                     if (Properties.Settings.Default.AutoMinimize) 
                         this.WindowState = FormWindowState.Minimized;
@@ -172,7 +175,8 @@ namespace ChampSelectSpy
                 obj.ContentType = "application/json";
                 obj.Method = method;
                 obj.Headers.Add("Authorization", "Basic " + authToken);
-                using StreamReader streamReader = new StreamReader(((HttpWebResponse)obj.GetResponse()).GetResponseStream());
+                using StreamReader streamReader = new StreamReader(((HttpWebResponse)obj.GetResponse()).GetResponseStream()
+                                                                   ?? throw new InvalidOperationException());
                 return streamReader.ReadToEnd();
             }
             catch
@@ -187,7 +191,7 @@ namespace ChampSelectSpy
             {
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = "https://www.op.gg/multisearch/" + cmbRegion.Text + "?summoners=" + string.Join(",", participants),
+                    FileName = $"https://www.op.gg/multisearch/{cmbRegion.Text}?summoners={string.Join(",", participants)}",
                     UseShellExecute = true
                 });
             }
@@ -199,7 +203,7 @@ namespace ChampSelectSpy
             {
                 Process.Start(new ProcessStartInfo
                 {
-                    FileName = "https://u.gg/multisearch?summoners=" + string.Join(",", participants) + "&region=" + ClientInfo.Region,
+                    FileName = $"https://u.gg/multisearch?summoners={string.Join(",", participants)}&region={ClientInfo.Region}",
                     UseShellExecute = true
                 });
             }
